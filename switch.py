@@ -41,6 +41,7 @@ def main():
 
     num_interfaces = wrapper.init(sys.argv[2:])
     interfaces = range(0, num_interfaces)
+    mac_table = dict()
 
     print("# Starting switch with id {}".format(switch_id), flush=True)
     print("[INFO] Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
@@ -76,11 +77,19 @@ def main():
         print("Received frame of size {} on interface {}".format(length, interface), flush=True)
 
         # TODO: Implement forwarding with learning
+        mac_table[src_mac] = interface
+        if dest_mac in mac_table:
+            send_to_link(mac_table[dest_mac], data, length)
+        else:
+            for i in interfaces:
+                if i != interface:
+                    send_to_link(i, data, length)
         # TODO: Implement VLAN support
         # TODO: Implement STP support
 
         # data is of type bytes.
         # send_to_link(i, data, length)
 
+        print()
 if __name__ == "__main__":
     main()
