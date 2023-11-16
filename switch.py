@@ -34,10 +34,25 @@ def send_bdpu_every_sec():
         # TODO Send BDPU every second if necessary
         time.sleep(1)
 
+def get_config_data(filename, interfaces_vlan):
+    file = open(filename, "r")
+    lines = file.readlines()
+
+    for index, line in enumerate(lines[1:]):
+        vlan_id = line.split()[1]
+        if (vlan_id != "T"):
+            interfaces_vlan[index] = int(vlan_id)
+        else:
+            interfaces_vlan[index] = vlan_id
+
+    file.close()
+
 def main():
     # init returns the max interface number. Our interfaces
     # are 0, 1, 2, ..., init_ret value + 1
     switch_id = sys.argv[1]
+    interfaces_vlan = dict()
+    get_config_data(f"configs/switch{switch_id}.cfg", interfaces_vlan)
 
     num_interfaces = wrapper.init(sys.argv[2:])
     interfaces = range(0, num_interfaces)
@@ -76,15 +91,37 @@ def main():
 
         print("Received frame of size {} on interface {}".format(length, interface), flush=True)
 
-        # TODO: Implement forwarding with learning
+        tagged_frame = bytes()
+        tagged_length = 0
+        if (vlan_id == -1): # came from access interface
+            vlan_id = interfaces_vlan[interface]
+            tagged_frame = data[0:12] + create_vlan_tag(vlan_id) + data[12:]
+            tagged_length = length + 4
+        else: # came from trunk interface
+            tagged_frame = data
+            tagged_length = length
+            data = data[0:12] + data[16:]
+            length = length - 4
+
+        print(f"vlan: {vlan_id}")
+
+        # forwarding with learning
         mac_table[src_mac] = interface
         if dest_mac in mac_table:
-            send_to_link(mac_table[dest_mac], data, length)
+            dest_interface = mac_table[dest_mac]
+            if interfaces_vlan[dest_interface] == "T":
+                send_to_link(dest_interface, tagged_frame, tagged_length)
+            if interfaces_vlan[dest_interface] == vlan_id:
+                send_to_link(dest_interface, data, length)
         else:
             for i in interfaces:
                 if i != interface:
-                    send_to_link(i, data, length)
-        # TODO: Implement VLAN support
+                    print(f"{get_interface_name(i)}: {interfaces_vlan[i]}")
+                    if (interfaces_vlan[i] == "T"):
+                        send_to_link(i, tagged_frame, tagged_length)
+                    if interfaces_vlan[i] == vlan_id:
+                        send_to_link(i, data, length)
+
         # TODO: Implement STP support
 
         # data is of type bytes.
