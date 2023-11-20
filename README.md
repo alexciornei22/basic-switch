@@ -1,31 +1,17 @@
-Scheleton for the Hub implementation.
+Cerinte facute: 1 2 3
 
-## Running
+# 1. Tabela de comutare
 
-```bash
-sudo python3 checker/topo.py
-```
+S-a implementat pseudocodul din enuntul temei, se trece interfata de pe care a venit pachetul in tabela de comutare, se verifica daca pachetul este unicast, daca destinatia se afla in tabela se trimite acolo, daca nu, se face flood.
 
-This will open 9 terminals, 6 hosts and 3 for the switches. On the switch terminal you will run 
+# 2. VLAN
 
-```bash
-make run_switch SWITCH_ID=X # X is 0,1 or 2
-```
+Pentru implementarea VLAN-urilor, pentru fiecare pachet primit se verifica daca este venit de pe interfata access sau trunk, se creeaza 2 pachete (unul cu 802.1q header, altul fara) si se trimite cel de care este nevoie daca urmeaza sa fie forwarded pe un port trunk sau access.
 
-The hosts have the following IP addresses.
-```
-host0 192.168.1.1
-host1 192.168.1.2
-host2 192.168.1.3
-host3 192.168.1.4
-host4 192.168.1.5
-host5 192.168.1.6
-```
+De asemenea, se tine cont ca locul unde se trimite sa fie in acelasi VLAN ca statia care a trimis pachetul.
 
-We will be testing using the ICMP. For example, from host0 we will run:
+# 3. STP
 
-```
-ping 192.168.1.2
-```
+Pentru STP a fost implementata functia `send_bdpu_every_sec()` care verifica daca switch-ul este root bridge si trimite mai departe pe toate interfetele trunk un pachet BDPU.
 
-Note: We will use wireshark for debugging. From any terminal you can run `wireshark&`.
+In loop-ul principal al switch-ului, in caz ca se primeste un pachet BDPU, se procedeaza conform indicatiilor din enunt. Pentru interfete a fost implementata o clasa ajutatoare care sa encapsuleze datele si starea in care se afla fiecare (in cazul acesta, LISTENING sau BLOCKED).
